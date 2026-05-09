@@ -1,0 +1,45 @@
+"use client"
+
+import { useState } from "react"
+import { SpecForm } from "@/components/SpecForm"
+import { ResultsDisplay } from "@/components/ResultsDisplay"
+import type { AnalysisResult } from "@/lib/types"
+
+export default function Home() {
+  const [result, setResult] = useState<AnalysisResult | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  return (
+    <main className="min-h-screen bg-background">
+      <div className="max-w-3xl mx-auto px-6 py-16">
+        <header className="mb-12">
+          <div className="flex items-center gap-2 mb-6">
+            <span className="text-xs font-mono tracking-widest text-muted-foreground uppercase">
+              AlmostRight
+            </span>
+          </div>
+          <h1 className="text-3xl font-semibold tracking-tight text-foreground mb-3">
+            Spec Contradiction Analyzer
+          </h1>
+          <p className="text-muted-foreground text-base leading-relaxed">
+            Paste your product spec below. We'll surface contradictions, conflicting sections,
+            and suggested rewrites — before they make it into a build.
+          </p>
+        </header>
+
+        <SpecForm
+          onResult={(r) => { setResult(r); setError(null) }}
+          onError={(e) => { setError(e); setResult(null) }}
+        />
+
+        {error && (
+          <div className="mt-6 px-4 py-3 rounded-md border border-destructive/30 bg-destructive/5 text-destructive text-sm">
+            {error}
+          </div>
+        )}
+
+        {result && <ResultsDisplay result={result} />}
+      </div>
+    </main>
+  )
+}
