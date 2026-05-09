@@ -37,7 +37,7 @@ export async function POST(req: Request) {
   try {
     const { spec } = await req.json()
 
-    const flagEnabled = await isEnabled(FLAG)
+    const flagEnabled = isEnabled(FLAG)
     if (!flagEnabled) {
       return NextResponse.json(
         { error: "Spec analysis is not available in this environment." },
