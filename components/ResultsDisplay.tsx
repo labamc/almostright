@@ -1,6 +1,6 @@
 "use client"
 
-import { AlertTriangle, AlertCircle, Info, Clock } from "lucide-react"
+import { AlertTriangle, AlertCircle, Info, Clock, ExternalLink, Wand2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { AnalysisResult, Contradiction, Severity } from "@/lib/types"
 
@@ -117,6 +117,62 @@ export function ResultsDisplay({ result }: ResultsDisplayProps) {
           ))}
         </div>
       )}
+
+      {sorted.length > 0 && <CTAPanel contradictions={sorted} spec="" />}
+    </div>
+  )
+}
+
+function CTAPanel({ contradictions }: { contradictions: Contradiction[]; spec: string }) {
+  const fixPrompt = [
+    "I ran my product spec through AlmostRight and found the following contradictions. Please apply the suggested rewrites, preserve my voice and structure, and return the full corrected spec.\n\nContradictions found:\n",
+    ...contradictions.map((c, i) =>
+      `${i + 1}. [${c.severity.toUpperCase()}] ${c.summary}\n   Section A: "${c.sectionA}"\n   Section B: "${c.sectionB}"\n   Suggested rewrite: ${c.suggestedRewrite}`
+    ),
+  ].join("\n")
+
+  const claudeUrl = `https://claude.ai/new?q=${encodeURIComponent(fixPrompt)}`
+
+  return (
+    <div className="mt-8 rounded-md border border-border bg-card p-6 space-y-4">
+      <div>
+        <p className="text-sm font-medium text-foreground mb-1">What's next?</p>
+        <p className="text-sm text-muted-foreground">Fix these contradictions now, or prevent them from being written in the first place.</p>
+      </div>
+
+      <div className="flex flex-col sm:flex-row gap-3">
+        <a
+          href="https://atono.io"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(
+            "inline-flex items-center justify-center gap-2 rounded-md px-5 py-2.5",
+            "bg-primary text-primary-foreground text-sm font-medium",
+            "hover:opacity-90 active:opacity-80 transition-opacity"
+          )}
+        >
+          <ExternalLink className="h-4 w-4" />
+          Start building in Atono
+        </a>
+
+        <a
+          href={claudeUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(
+            "inline-flex items-center justify-center gap-2 rounded-md px-5 py-2.5",
+            "border border-border bg-background text-foreground text-sm font-medium",
+            "hover:bg-muted active:opacity-80 transition-colors"
+          )}
+        >
+          <Wand2 className="h-4 w-4" />
+          Fix with Claude
+        </a>
+      </div>
+
+      <p className="text-xs text-muted-foreground">
+        Atono grounds your team's AI workflow in your product context — so contradictions like these are caught before the spec is written.
+      </p>
     </div>
   )
 }
