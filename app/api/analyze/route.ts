@@ -76,7 +76,8 @@ export async function POST(req: Request) {
 
     let parsed: { coherenceScore: number; contradictions: AnalysisResult["contradictions"] }
     try {
-      parsed = JSON.parse(raw.text)
+      const cleaned = raw.text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim()
+      parsed = JSON.parse(cleaned)
     } catch {
       return NextResponse.json({ error: "Failed to parse analysis response." }, { status: 500 })
     }
