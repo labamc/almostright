@@ -8,6 +8,18 @@ import type { AnalysisResult } from "@/lib/types"
 const MAX_FILE_BYTES = 10 * 1024 * 1024 // 10 MB
 const ACCEPTED = ".txt,.md,.pdf,.docx"
 
+const SAMPLE_SPEC = `# Notification System
+
+Users should receive real-time notifications for all activity on the platform. The notification bell in the top nav shows the unread count. Clicking it opens a dropdown with the last 10 notifications.
+
+Notifications must be delivered instantly and the system must also work seamlessly when the user is offline. The backend must support thousands of concurrent users with sub-100ms delivery at peak load.
+
+Users can mark notifications as read by clicking them. All notifications are automatically marked as read after 24 hours. Users can also manually mark all as read at once.
+
+The notification preferences page lets users disable specific notification types. Notifications are always sent for critical system alerts regardless of user preferences.
+
+Success is when users feel informed without feeling overwhelmed.`
+
 interface SpecFormProps {
   onResult: (result: AnalysisResult, spec: string) => void
   onError: (error: string) => void
@@ -102,18 +114,31 @@ export function SpecForm({ onResult, onError }: SpecFormProps) {
           <label htmlFor="spec" className="block text-sm font-medium text-foreground">
             Product spec
           </label>
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            disabled={busy}
-            className={cn(
-              "inline-flex items-center gap-1.5 text-xs text-muted-foreground",
-              "hover:text-foreground transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            )}
-          >
-            <UploadCloud className="h-3.5 w-3.5" />
-            Upload file
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setSpec(SAMPLE_SPEC)}
+              disabled={busy}
+              className={cn(
+                "text-xs text-muted-foreground",
+                "hover:text-foreground transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              )}
+            >
+              Try sample spec →
+            </button>
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              disabled={busy}
+              className={cn(
+                "inline-flex items-center gap-1.5 text-xs text-muted-foreground",
+                "hover:text-foreground transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              )}
+            >
+              <UploadCloud className="h-3.5 w-3.5" />
+              Upload file
+            </button>
+          </div>
           <input
             ref={fileRef}
             type="file"
