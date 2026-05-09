@@ -1,6 +1,7 @@
 "use client"
 
-import { AlertTriangle, AlertCircle, Info, Clock, ExternalLink, Wand2 } from "lucide-react"
+import { useState } from "react"
+import { AlertTriangle, AlertCircle, Info, Clock, ExternalLink, Wand2, Download, Check } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { AnalysisResult, Contradiction, Severity } from "@/lib/types"
 
@@ -47,6 +48,23 @@ function CoherenceScore({ score }: { score: number }) {
   )
 }
 
+function HoursSaved({ high, medium, low }: { high: number; medium: number; low: number }) {
+  const total = high + medium + low
+  if (total === 0) return null
+  const hours = high * 4 + medium * 2 + low * 0.5
+  const hoursLabel = hours % 1 === 0 ? `${hours}h` : `${hours.toFixed(1)}h`
+
+  return (
+    <div className="flex items-center justify-between px-4 py-3 rounded-md border border-border bg-card text-sm">
+      <span className="text-muted-foreground">
+        {total} contradiction{total !== 1 ? "s" : ""} caught
+        {high > 0 && <span className="ml-1 opacity-60">— {high} high severity</span>}
+      </span>
+      <span className="font-medium text-foreground">~{hoursLabel} of rework avoided</span>
+    </div>
+  )
+}
+
 function ContradictionCard({ item }: { item: Contradiction }) {
   const config = severityConfig[item.severity]
   const Icon = config.icon
@@ -84,6 +102,49 @@ function ContradictionCard({ item }: { item: Contradiction }) {
   )
 }
 
+function exportMarkdown(result: AnalysisResult, contradictions: Contradiction[]) {
+  const date = new Date().toISOString().split("T")[0]
+  const high = contradictions.filter((c) => c.severity === "high")
+  const medium = contradictions.filter((c) => c.severity === "medium")
+  const low = contradictions.filter((c) => c.severity === "low")
+  const hours = high.length * 4 + medium.length * 2 + low.length * 0.5
+  const hoursLabel = hours % 1 === 0 ? `${hours}h` : `${hours.toFixed(1)}h`
+
+  const sections = contradictions.map((c, i) =>
+    [
+      `## ${i + 1}. [${c.severity.toUpperCase()}] ${c.summary}`,
+      ``,
+      `**Section A:**`,
+      `> ${c.sectionA}`,
+      ``,
+      `**Section B:**`,
+      `> ${c.sectionB}`,
+      ``,
+      `**Suggested rewrite:** ${c.suggestedRewrite}`,
+    ].join("\n")
+  )
+
+  const content = [
+    `# AlmostRight Analysis — ${date}`,
+    ``,
+    `**Coherence score:** ${result.coherenceScore}/100`,
+    `**Contradictions found:** ${contradictions.length}`,
+    `**Estimated rework avoided:** ~${hoursLabel}`,
+    ``,
+    `---`,
+    ``,
+    sections.join("\n\n"),
+  ].join("\n")
+
+  const blob = new Blob([content], { type: "text/markdown" })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = `almostright-${date}.md`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 export function ResultsDisplay({ result, spec }: ResultsDisplayProps) {
   const high = result.contradictions.filter((c) => c.severity === "high")
   const medium = result.contradictions.filter((c) => c.severity === "medium")
@@ -94,13 +155,27 @@ export function ResultsDisplay({ result, spec }: ResultsDisplayProps) {
     <div className="mt-10 space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold tracking-tight">Analysis results</h2>
-        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Clock className="h-3.5 w-3.5" />
-          {(result.analysisMs / 1000).toFixed(1)}s
-        </span>
+        <div className="flex items-center gap-4">
+          {sorted.length > 0 && (
+            <button
+              type="button"
+              onClick={() => exportMarkdown(result, sorted)}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Export
+            </button>
+          )}
+          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Clock className="h-3.5 w-3.5" />
+            {(result.analysisMs / 1000).toFixed(1)}s
+          </span>
+        </div>
       </div>
 
       <CoherenceScore score={result.coherenceScore} />
+
+      <HoursSaved high={high.length} medium={medium.length} low={low.length} />
 
       {sorted.length === 0 ? (
         <p className="text-sm text-muted-foreground py-4">
@@ -108,11 +183,6 @@ export function ResultsDisplay({ result, spec }: ResultsDisplayProps) {
         </p>
       ) : (
         <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Found{" "}
-            <span className="font-medium text-foreground">{sorted.length}</span>{" "}
-            contradiction{sorted.length !== 1 ? "s" : ""}{high.length > 0 && ` — ${high.length} high severity`}.
-          </p>
           {sorted.map((item) => (
             <ContradictionCard key={item.id} item={item} />
           ))}
@@ -125,25 +195,39 @@ export function ResultsDisplay({ result, spec }: ResultsDisplayProps) {
 }
 
 function CTAPanel({ contradictions, spec }: { contradictions: Contradiction[]; spec: string }) {
+  const [copied, setCopied] = useState(false)
+
   const specSection = spec
-    ? `\n\nORIGINAL SPEC:\n---\n${spec.slice(0, 8000)}${spec.length > 8000 ? "\n\n[spec truncated — paste the full doc if needed]" : ""}\n---`
+    ? `\n\nORIGINAL SPEC:\n---\n${spec}\n---`
     : ""
 
   const fixPrompt = [
     "I ran my product spec through AlmostRight and found the following contradictions. Please apply the suggested rewrites, preserve my voice, structure, and formatting, then return the full corrected spec.\n\nContradictions to fix:\n",
-    ...contradictions.map((c, i) =>
-      `${i + 1}. [${c.severity.toUpperCase()}] ${c.summary}\n   Section A: "${c.sectionA}"\n   Section B: "${c.sectionB}"\n   Suggested rewrite: ${c.suggestedRewrite}`
+    ...contradictions.map(
+      (c, i) =>
+        `${i + 1}. [${c.severity.toUpperCase()}] ${c.summary}\n   Section A: "${c.sectionA}"\n   Section B: "${c.sectionB}"\n   Suggested rewrite: ${c.suggestedRewrite}`
     ),
     specSection,
   ].join("\n")
 
-  const claudeUrl = `https://claude.ai/new?q=${encodeURIComponent(fixPrompt)}`
+  async function handleFixWithClaude() {
+    try {
+      await navigator.clipboard.writeText(fixPrompt)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2500)
+    } catch {
+      // clipboard unavailable — still open Claude
+    }
+    window.open("https://claude.ai/new", "_blank")
+  }
 
   return (
     <div className="mt-8 rounded-md border border-border bg-card p-6 space-y-4">
       <div>
-        <p className="text-sm font-medium text-foreground mb-1">What's next?</p>
-        <p className="text-sm text-muted-foreground">Fix these contradictions now, or prevent them from being written in the first place.</p>
+        <p className="text-sm font-medium text-foreground mb-1">What&apos;s next?</p>
+        <p className="text-sm text-muted-foreground">
+          Fix these contradictions now, or prevent them from being written in the first place.
+        </p>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">
@@ -161,23 +245,32 @@ function CTAPanel({ contradictions, spec }: { contradictions: Contradiction[]; s
           Start building in Atono
         </a>
 
-        <a
-          href={claudeUrl}
-          target="_blank"
-          rel="noopener noreferrer"
+        <button
+          type="button"
+          onClick={handleFixWithClaude}
           className={cn(
             "inline-flex items-center justify-center gap-2 rounded-md px-5 py-2.5",
             "border border-border bg-background text-foreground text-sm font-medium",
             "hover:bg-muted active:opacity-80 transition-colors"
           )}
         >
-          <Wand2 className="h-4 w-4" />
-          Fix with Claude
-        </a>
+          {copied ? (
+            <>
+              <Check className="h-4 w-4 text-green-600" />
+              Copied — paste into Claude
+            </>
+          ) : (
+            <>
+              <Wand2 className="h-4 w-4" />
+              Fix with Claude
+            </>
+          )}
+        </button>
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Atono grounds your team's AI workflow in your product context — so contradictions like these are caught before the spec is written.
+        Atono grounds your team&apos;s AI workflow in your product context — so contradictions like these are caught
+        before the spec is written.
       </p>
     </div>
   )

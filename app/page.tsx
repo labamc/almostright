@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import { SpecForm } from "@/components/SpecForm"
 import { ResultsDisplay } from "@/components/ResultsDisplay"
 import type { AnalysisResult } from "@/lib/types"
@@ -40,6 +41,15 @@ export default function Home() {
         )}
 
         {result && <ResultsDisplay result={result} spec={spec} />}
+
+        <footer className="mt-16 pt-8 border-t border-border">
+          <Link
+            href="/stats"
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Usage stats →
+          </Link>
+        </footer>
       </div>
     </main>
   )

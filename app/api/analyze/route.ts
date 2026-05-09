@@ -3,6 +3,29 @@ import { NextResponse } from "next/server"
 import type { AnalysisResult } from "@/lib/types"
 import { isEnabled } from "@/lib/feature-flags"
 
+function logAnalysis(contradictions: AnalysisResult["contradictions"]) {
+  const url = process.env.UPSTASH_REDIS_REST_URL
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN
+  if (!url || !token) return
+
+  const high = contradictions.filter((c) => c.severity === "high").length
+  const medium = contradictions.filter((c) => c.severity === "medium").length
+  const low = contradictions.filter((c) => c.severity === "low").length
+  const hours = high * 4 + medium * 2 + low * 0.5
+
+  const pipeline = [
+    ["INCR", "almostright:analyses"],
+    ["INCRBY", "almostright:contradictions", contradictions.length],
+    ["INCRBYFLOAT", "almostright:hours_saved", hours],
+  ]
+
+  fetch(`${url}/pipeline`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify(pipeline),
+  }).catch(() => {})
+}
+
 const FLAG = "contradiction_analysis"
 
 const client = new Anthropic()
@@ -87,6 +110,8 @@ export async function POST(req: Request) {
       contradictions: parsed.contradictions,
       analysisMs,
     }
+
+    logAnalysis(parsed.contradictions)
 
     return NextResponse.json(result)
   } catch (err) {
