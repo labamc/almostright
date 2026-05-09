@@ -7,6 +7,7 @@ import type { AnalysisResult } from "@/lib/types"
 
 export default function Home() {
   const [result, setResult] = useState<AnalysisResult | null>(null)
+  const [spec, setSpec] = useState<string>("")
   const [error, setError] = useState<string | null>(null)
 
   return (
@@ -28,7 +29,7 @@ export default function Home() {
         </header>
 
         <SpecForm
-          onResult={(r) => { setResult(r); setError(null) }}
+          onResult={(r, s) => { setResult(r); setSpec(s); setError(null) }}
           onError={(e) => { setError(e); setResult(null) }}
         />
 
@@ -38,7 +39,7 @@ export default function Home() {
           </div>
         )}
 
-        {result && <ResultsDisplay result={result} />}
+        {result && <ResultsDisplay result={result} spec={spec} />}
       </div>
     </main>
   )

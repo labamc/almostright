@@ -9,7 +9,7 @@ const MAX_FILE_BYTES = 10 * 1024 * 1024 // 10 MB
 const ACCEPTED = ".txt,.md,.pdf,.docx"
 
 interface SpecFormProps {
-  onResult: (result: AnalysisResult) => void
+  onResult: (result: AnalysisResult, spec: string) => void
   onError: (error: string) => void
 }
 
@@ -85,7 +85,7 @@ export function SpecForm({ onResult, onError }: SpecFormProps) {
       }
 
       const data: AnalysisResult = await res.json()
-      onResult(data)
+      onResult(data, spec)
     } catch {
       onError("Network error. Please check your connection and try again.")
     } finally {

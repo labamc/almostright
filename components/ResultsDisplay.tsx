@@ -6,6 +6,7 @@ import type { AnalysisResult, Contradiction, Severity } from "@/lib/types"
 
 interface ResultsDisplayProps {
   result: AnalysisResult
+  spec: string
 }
 
 const severityConfig: Record<Severity, { label: string; icon: React.ElementType; className: string }> = {
@@ -83,7 +84,7 @@ function ContradictionCard({ item }: { item: Contradiction }) {
   )
 }
 
-export function ResultsDisplay({ result }: ResultsDisplayProps) {
+export function ResultsDisplay({ result, spec }: ResultsDisplayProps) {
   const high = result.contradictions.filter((c) => c.severity === "high")
   const medium = result.contradictions.filter((c) => c.severity === "medium")
   const low = result.contradictions.filter((c) => c.severity === "low")
@@ -118,17 +119,22 @@ export function ResultsDisplay({ result }: ResultsDisplayProps) {
         </div>
       )}
 
-      {sorted.length > 0 && <CTAPanel contradictions={sorted} spec="" />}
+      {sorted.length > 0 && <CTAPanel contradictions={sorted} spec={spec} />}
     </div>
   )
 }
 
-function CTAPanel({ contradictions }: { contradictions: Contradiction[]; spec: string }) {
+function CTAPanel({ contradictions, spec }: { contradictions: Contradiction[]; spec: string }) {
+  const specSection = spec
+    ? `\n\nORIGINAL SPEC:\n---\n${spec.slice(0, 8000)}${spec.length > 8000 ? "\n\n[spec truncated — paste the full doc if needed]" : ""}\n---`
+    : ""
+
   const fixPrompt = [
-    "I ran my product spec through AlmostRight and found the following contradictions. Please apply the suggested rewrites, preserve my voice and structure, and return the full corrected spec.\n\nContradictions found:\n",
+    "I ran my product spec through AlmostRight and found the following contradictions. Please apply the suggested rewrites, preserve my voice, structure, and formatting, then return the full corrected spec.\n\nContradictions to fix:\n",
     ...contradictions.map((c, i) =>
       `${i + 1}. [${c.severity.toUpperCase()}] ${c.summary}\n   Section A: "${c.sectionA}"\n   Section B: "${c.sectionB}"\n   Suggested rewrite: ${c.suggestedRewrite}`
     ),
+    specSection,
   ].join("\n")
 
   const claudeUrl = `https://claude.ai/new?q=${encodeURIComponent(fixPrompt)}`
