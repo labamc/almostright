@@ -3,8 +3,4 @@
   "buildCommand": "next build",
   "devCommand": "next dev",
   "installCommand": "npm install",
-  "env": {
-    "ANTHROPIC_API_KEY": "@anthropic-api-key",
-    "ATONO_ENV_KEY": "@atono-env-key"
-  }
 }
