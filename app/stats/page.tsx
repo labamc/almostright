@@ -1,9 +1,20 @@
 import Link from "next/link"
 
+const TYPE_LABELS: Record<string, string> = {
+  contradiction: "Contradictions",
+  scope_landmine: "Scope landmines",
+  missing_edge_case: "Missing edge cases",
+  ambiguity: "Ambiguities",
+  unstated_assumption: "Unstated assumptions",
+  untestable: "Untestable requirements",
+}
+
+const ISSUE_TYPES = Object.keys(TYPE_LABELS)
+
 interface Stats {
   analyses: number
-  contradictions: number
-  hoursSaved: number
+  issues: number
+  byType: Record<string, number>
 }
 
 async function getStats(): Promise<Stats | null> {
@@ -14,8 +25,8 @@ async function getStats(): Promise<Stats | null> {
   try {
     const pipeline = [
       ["GET", "almostright:analyses"],
-      ["GET", "almostright:contradictions"],
-      ["GET", "almostright:hours_saved"],
+      ["GET", "almostright:issues"],
+      ...ISSUE_TYPES.map((t) => ["GET", `almostright:issues:${t}`]),
     ]
 
     const res = await fetch(`${url}/pipeline`, {
@@ -28,10 +39,15 @@ async function getStats(): Promise<Stats | null> {
     if (!res.ok) return null
     const data: Array<{ result: string | null }> = await res.json()
 
+    const byType: Record<string, number> = {}
+    ISSUE_TYPES.forEach((type, i) => {
+      byType[type] = parseInt(data[2 + i]?.result ?? "0") || 0
+    })
+
     return {
       analyses: parseInt(data[0]?.result ?? "0") || 0,
-      contradictions: parseInt(data[1]?.result ?? "0") || 0,
-      hoursSaved: parseFloat(data[2]?.result ?? "0") || 0,
+      issues: parseInt(data[1]?.result ?? "0") || 0,
+      byType,
     }
   } catch {
     return null
@@ -65,7 +81,7 @@ export default async function StatsPage() {
           </div>
           <h1 className="text-3xl font-semibold tracking-tight text-foreground mb-3">Usage stats</h1>
           <p className="text-muted-foreground text-base leading-relaxed">
-            How many specs we&apos;ve analyzed and how much rework we&apos;ve helped avoid.
+            Every issue caught here is one that didn&apos;t hit a sprint.
           </p>
         </header>
 
@@ -76,20 +92,33 @@ export default async function StatsPage() {
             <code className="font-mono text-foreground">UPSTASH_REDIS_REST_TOKEN</code> to enable it.
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <StatCard
-              label="Specs analyzed"
-              value={stats.analyses.toLocaleString()}
-            />
-            <StatCard
-              label="Contradictions caught"
-              value={stats.contradictions.toLocaleString()}
-            />
-            <StatCard
-              label="Hours of rework avoided"
-              value={`~${stats.hoursSaved % 1 === 0 ? stats.hoursSaved : stats.hoursSaved.toFixed(1)}`}
-              sub="across all specs"
-            />
+          <div className="space-y-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <StatCard label="Specs analyzed" value={stats.analyses.toLocaleString()} />
+              <StatCard
+                label="Issues caught"
+                value={stats.issues.toLocaleString()}
+                sub="before they hit a sprint"
+              />
+            </div>
+
+            {stats.issues > 0 && (
+              <div className="rounded-md border border-border bg-card divide-y divide-border">
+                <div className="px-5 py-3">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest">
+                    Breakdown by type
+                  </p>
+                </div>
+                {ISSUE_TYPES.filter((t) => stats.byType[t] > 0).map((type) => (
+                  <div key={type} className="flex items-center justify-between px-5 py-3">
+                    <span className="text-sm text-foreground">{TYPE_LABELS[type]}</span>
+                    <span className="text-sm font-medium tabular-nums text-muted-foreground">
+                      {stats.byType[type].toLocaleString()}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

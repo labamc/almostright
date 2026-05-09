@@ -1,16 +1,25 @@
 export type Severity = "high" | "medium" | "low"
 
-export interface Contradiction {
+export type IssueType =
+  | "contradiction"
+  | "ambiguity"
+  | "scope_landmine"
+  | "missing_edge_case"
+  | "unstated_assumption"
+  | "untestable"
+
+export interface SpecIssue {
   id: string
+  type: IssueType
   severity: Severity
   summary: string
-  sectionA: string
-  sectionB: string
-  suggestedRewrite: string
+  excerpt: string
+  conflictingExcerpt?: string
+  suggestedFix: string
 }
 
 export interface AnalysisResult {
   coherenceScore: number
-  contradictions: Contradiction[]
+  issues: SpecIssue[]
   analysisMs: number
 }

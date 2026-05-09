@@ -1,31 +1,88 @@
 "use client"
 
 import { useState } from "react"
-import { AlertTriangle, AlertCircle, Info, Clock, ExternalLink, Wand2, Download, Check } from "lucide-react"
+import {
+  Clock,
+  ExternalLink,
+  Wand2,
+  Download,
+  Check,
+  XCircle,
+  HelpCircle,
+  Flame,
+  AlertTriangle,
+  EyeOff,
+  Ban,
+} from "lucide-react"
 import { cn } from "@/lib/utils"
-import type { AnalysisResult, Contradiction, Severity } from "@/lib/types"
+import type { AnalysisResult, SpecIssue, IssueType, Severity } from "@/lib/types"
 
 interface ResultsDisplayProps {
   result: AnalysisResult
   spec: string
 }
 
-const severityConfig: Record<Severity, { label: string; icon: React.ElementType; className: string }> = {
-  high: {
-    label: "High",
+const ISSUE_TYPE_ORDER: IssueType[] = [
+  "contradiction",
+  "scope_landmine",
+  "missing_edge_case",
+  "ambiguity",
+  "unstated_assumption",
+  "untestable",
+]
+
+const typeConfig: Record<
+  IssueType,
+  { label: string; description: string; icon: React.ElementType; headerClass: string; cardClass: string }
+> = {
+  contradiction: {
+    label: "Contradictions",
+    description: "these can't both be true",
+    icon: XCircle,
+    headerClass: "text-red-700 dark:text-red-400",
+    cardClass: "border-red-200 bg-red-50/50",
+  },
+  scope_landmine: {
+    label: "Scope landmines",
+    description: "these are bigger than they look",
+    icon: Flame,
+    headerClass: "text-orange-700 dark:text-orange-400",
+    cardClass: "border-orange-200 bg-orange-50/50",
+  },
+  missing_edge_case: {
+    label: "Missing edge cases",
+    description: "what happens when this goes wrong?",
     icon: AlertTriangle,
-    className: "text-severity-high border-severity-high/20 bg-severity-high/5",
+    headerClass: "text-yellow-700 dark:text-yellow-400",
+    cardClass: "border-yellow-200 bg-yellow-50/50",
   },
-  medium: {
-    label: "Medium",
-    icon: AlertCircle,
-    className: "text-severity-medium border-severity-medium/20 bg-severity-medium/5",
+  ambiguity: {
+    label: "Ambiguities",
+    description: "these will need a clarification conversation",
+    icon: HelpCircle,
+    headerClass: "text-amber-700 dark:text-amber-400",
+    cardClass: "border-amber-200 bg-amber-50/50",
   },
-  low: {
-    label: "Low",
-    icon: Info,
-    className: "text-severity-low border-severity-low/20 bg-severity-low/5",
+  unstated_assumption: {
+    label: "Unstated assumptions",
+    description: "your engineer will guess here",
+    icon: EyeOff,
+    headerClass: "text-blue-700 dark:text-blue-400",
+    cardClass: "border-blue-200 bg-blue-50/50",
   },
+  untestable: {
+    label: "Untestable requirements",
+    description: "nobody will know when this is done",
+    icon: Ban,
+    headerClass: "text-purple-700 dark:text-purple-400",
+    cardClass: "border-purple-200 bg-purple-50/50",
+  },
+}
+
+const severityDot: Record<Severity, string> = {
+  high: "bg-red-500",
+  medium: "bg-amber-500",
+  low: "bg-slate-400",
 }
 
 function CoherenceScore({ score }: { score: number }) {
@@ -35,9 +92,7 @@ function CoherenceScore({ score }: { score: number }) {
   return (
     <div className="flex items-center justify-between p-5 rounded-md border border-border bg-card">
       <div>
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest mb-1">
-          Coherence score
-        </p>
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest mb-1">Coherence score</p>
         <p className={cn("text-4xl font-semibold tabular-nums", color)}>
           {score}
           <span className="text-lg text-muted-foreground font-normal">/100</span>
@@ -48,88 +103,114 @@ function CoherenceScore({ score }: { score: number }) {
   )
 }
 
-function HoursSaved({ high, medium, low }: { high: number; medium: number; low: number }) {
-  const total = high + medium + low
+function IssuesSummary({ issues }: { issues: SpecIssue[] }) {
+  const total = issues.length
+  const typeCount = new Set(issues.map((i) => i.type)).size
   if (total === 0) return null
-  const hours = high * 4 + medium * 2 + low * 0.5
-  const hoursLabel = hours % 1 === 0 ? `${hours}h` : `${hours.toFixed(1)}h`
 
   return (
     <div className="flex items-center justify-between px-4 py-3 rounded-md border border-border bg-card text-sm">
       <span className="text-muted-foreground">
-        {total} contradiction{total !== 1 ? "s" : ""} caught
-        {high > 0 && <span className="ml-1 opacity-60">— {high} high severity</span>}
+        {total} issue{total !== 1 ? "s" : ""} across {typeCount} type{typeCount !== 1 ? "s" : ""}
       </span>
-      <span className="font-medium text-foreground">~{hoursLabel} of rework avoided</span>
+      <span className="font-medium text-foreground">caught before your sprint</span>
     </div>
   )
 }
 
-function ContradictionCard({ item }: { item: Contradiction }) {
-  const config = severityConfig[item.severity]
+function IssueCard({ issue }: { issue: SpecIssue }) {
+  const config = typeConfig[issue.type]
+
+  return (
+    <div className={cn("rounded-md border p-4 space-y-3", config.cardClass)}>
+      <div className="flex items-start gap-3">
+        <span className={cn("mt-1.5 h-2 w-2 rounded-full shrink-0", severityDot[issue.severity])} />
+        <p className="text-sm font-medium leading-snug flex-1">{issue.summary}</p>
+        <span className="text-xs font-mono opacity-50 shrink-0 capitalize">{issue.severity}</span>
+      </div>
+
+      {issue.type === "contradiction" ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pl-5">
+          <div className="space-y-1">
+            <p className="text-xs font-medium opacity-50 uppercase tracking-widest">Section A</p>
+            <blockquote className="text-sm border-l-2 border-current/30 pl-3 opacity-80 leading-relaxed">
+              {issue.excerpt}
+            </blockquote>
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs font-medium opacity-50 uppercase tracking-widest">Section B</p>
+            <blockquote className="text-sm border-l-2 border-current/30 pl-3 opacity-80 leading-relaxed">
+              {issue.conflictingExcerpt}
+            </blockquote>
+          </div>
+        </div>
+      ) : (
+        <blockquote className="text-sm border-l-2 border-current/30 pl-3 opacity-80 leading-relaxed ml-5">
+          {issue.excerpt}
+        </blockquote>
+      )}
+
+      <div className="pl-5 space-y-0.5 pt-1 border-t border-current/10">
+        <p className="text-xs font-medium opacity-50 uppercase tracking-widest">
+          {issue.type === "missing_edge_case" ? "What to add" : "Suggested fix"}
+        </p>
+        <p className="text-sm leading-relaxed opacity-90">{issue.suggestedFix}</p>
+      </div>
+    </div>
+  )
+}
+
+function TypeSection({ type, issues }: { type: IssueType; issues: SpecIssue[] }) {
+  const config = typeConfig[type]
   const Icon = config.icon
 
   return (
-    <div className={cn("rounded-md border p-5 space-y-4", config.className)}>
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <Icon className="h-4 w-4 shrink-0 mt-0.5" />
-          <p className="text-sm font-medium">{item.summary}</p>
-        </div>
-        <span className="text-xs font-mono shrink-0 opacity-70">{config.label}</span>
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <Icon className={cn("h-4 w-4 shrink-0", config.headerClass)} />
+        <h3 className={cn("text-sm font-semibold", config.headerClass)}>{config.label}</h3>
+        <span className="text-xs text-muted-foreground">— {config.description}</span>
+        <span className="ml-auto text-xs text-muted-foreground font-mono tabular-nums">{issues.length}</span>
       </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <p className="text-xs font-medium opacity-60 uppercase tracking-widest">Section A</p>
-          <blockquote className="text-sm border-l-2 border-current pl-3 opacity-80 leading-relaxed">
-            {item.sectionA}
-          </blockquote>
-        </div>
-        <div className="space-y-1">
-          <p className="text-xs font-medium opacity-60 uppercase tracking-widest">Section B</p>
-          <blockquote className="text-sm border-l-2 border-current pl-3 opacity-80 leading-relaxed">
-            {item.sectionB}
-          </blockquote>
-        </div>
-      </div>
-
-      <div className="space-y-1 pt-1 border-t border-current/10">
-        <p className="text-xs font-medium opacity-60 uppercase tracking-widest">Suggested rewrite</p>
-        <p className="text-sm leading-relaxed opacity-90">{item.suggestedRewrite}</p>
+      <div className="space-y-3">
+        {issues.map((issue) => (
+          <IssueCard key={issue.id} issue={issue} />
+        ))}
       </div>
     </div>
   )
 }
 
-function exportMarkdown(result: AnalysisResult, contradictions: Contradiction[]) {
+function exportMarkdown(result: AnalysisResult, issues: SpecIssue[]) {
   const date = new Date().toISOString().split("T")[0]
-  const high = contradictions.filter((c) => c.severity === "high")
-  const medium = contradictions.filter((c) => c.severity === "medium")
-  const low = contradictions.filter((c) => c.severity === "low")
-  const hours = high.length * 4 + medium.length * 2 + low.length * 0.5
-  const hoursLabel = hours % 1 === 0 ? `${hours}h` : `${hours.toFixed(1)}h`
 
-  const sections = contradictions.map((c, i) =>
-    [
-      `## ${i + 1}. [${c.severity.toUpperCase()}] ${c.summary}`,
+  const sections = ISSUE_TYPE_ORDER.flatMap((type) => {
+    const group = issues.filter((i) => i.type === type)
+    if (group.length === 0) return []
+    const config = typeConfig[type]
+    return [
+      `## ${config.label}`,
+      `*${config.description}*`,
       ``,
-      `**Section A:**`,
-      `> ${c.sectionA}`,
-      ``,
-      `**Section B:**`,
-      `> ${c.sectionB}`,
-      ``,
-      `**Suggested rewrite:** ${c.suggestedRewrite}`,
-    ].join("\n")
-  )
+      ...group.map((issue, i) =>
+        [
+          `### ${i + 1}. [${issue.severity.toUpperCase()}] ${issue.summary}`,
+          ``,
+          issue.type === "contradiction"
+            ? `**Section A:** > ${issue.excerpt}\n\n**Section B:** > ${issue.conflictingExcerpt}`
+            : `> ${issue.excerpt}`,
+          ``,
+          `**${issue.type === "missing_edge_case" ? "What to add" : "Suggested fix"}:** ${issue.suggestedFix}`,
+        ].join("\n")
+      ),
+    ]
+  })
 
   const content = [
     `# AlmostRight Analysis — ${date}`,
     ``,
     `**Coherence score:** ${result.coherenceScore}/100`,
-    `**Contradictions found:** ${contradictions.length}`,
-    `**Estimated rework avoided:** ~${hoursLabel}`,
+    `**Issues found:** ${issues.length} across ${new Set(issues.map((i) => i.type)).size} types`,
     ``,
     `---`,
     ``,
@@ -145,21 +226,43 @@ function exportMarkdown(result: AnalysisResult, contradictions: Contradiction[])
   URL.revokeObjectURL(url)
 }
 
+function getCTACopy(issues: SpecIssue[]): string {
+  const types = new Set(issues.map((i) => i.type))
+  if (types.has("ambiguity") && types.has("untestable"))
+    return "Atono generates acceptance criteria and grounds specs in shared context — so requirements are clear and testable before engineering starts."
+  if (types.has("scope_landmine"))
+    return "Atono surfaces scope implications before you write the spec — so hidden complexity gets planned, not discovered mid-sprint."
+  if (types.has("ambiguity"))
+    return "Atono's AI context and glossary prevent ambiguities by grounding specs in your team's shared decisions."
+  if (types.has("untestable"))
+    return "Atono generates acceptance criteria automatically from your stories — so requirements are testable by design."
+  if (types.has("unstated_assumption"))
+    return "Atono captures your team's product context so assumptions get documented as requirements, not discovered as incidents."
+  return "Atono grounds your team's AI workflow in your product context — so issues like these are caught before the spec is written."
+}
+
 export function ResultsDisplay({ result, spec }: ResultsDisplayProps) {
-  const high = result.contradictions.filter((c) => c.severity === "high")
-  const medium = result.contradictions.filter((c) => c.severity === "medium")
-  const low = result.contradictions.filter((c) => c.severity === "low")
-  const sorted = [...high, ...medium, ...low]
+  const grouped = ISSUE_TYPE_ORDER.map((type) => ({
+    type,
+    issues: result.issues
+      .filter((i) => i.type === type)
+      .sort((a, b) => {
+        const order: Record<Severity, number> = { high: 0, medium: 1, low: 2 }
+        return order[a.severity] - order[b.severity]
+      }),
+  })).filter(({ issues }) => issues.length > 0)
+
+  const allIssues = grouped.flatMap(({ issues }) => issues)
 
   return (
     <div className="mt-10 space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold tracking-tight">Analysis results</h2>
         <div className="flex items-center gap-4">
-          {sorted.length > 0 && (
+          {allIssues.length > 0 && (
             <button
               type="button"
-              onClick={() => exportMarkdown(result, sorted)}
+              onClick={() => exportMarkdown(result, allIssues)}
               className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
               <Download className="h-3.5 w-3.5" />
@@ -175,38 +278,41 @@ export function ResultsDisplay({ result, spec }: ResultsDisplayProps) {
 
       <CoherenceScore score={result.coherenceScore} />
 
-      <HoursSaved high={high.length} medium={medium.length} low={low.length} />
+      <IssuesSummary issues={allIssues} />
 
-      {sorted.length === 0 ? (
-        <p className="text-sm text-muted-foreground py-4">
-          No contradictions found. Your spec looks coherent.
-        </p>
+      {grouped.length === 0 ? (
+        <p className="text-sm text-muted-foreground py-4">No issues found. Your spec looks solid.</p>
       ) : (
-        <div className="space-y-4">
-          {sorted.map((item) => (
-            <ContradictionCard key={item.id} item={item} />
+        <div className="space-y-10">
+          {grouped.map(({ type, issues }) => (
+            <TypeSection key={type} type={type} issues={issues} />
           ))}
         </div>
       )}
 
-      {sorted.length > 0 && <CTAPanel contradictions={sorted} spec={spec} />}
+      {allIssues.length > 0 && <CTAPanel issues={allIssues} spec={spec} />}
     </div>
   )
 }
 
-function CTAPanel({ contradictions, spec }: { contradictions: Contradiction[]; spec: string }) {
+function CTAPanel({ issues, spec }: { issues: SpecIssue[]; spec: string }) {
   const [copied, setCopied] = useState(false)
 
-  const specSection = spec
-    ? `\n\nORIGINAL SPEC:\n---\n${spec}\n---`
-    : ""
+  const specSection = spec ? `\n\nORIGINAL SPEC:\n---\n${spec}\n---` : ""
 
   const fixPrompt = [
-    "I ran my product spec through AlmostRight and found the following contradictions. Please apply the suggested rewrites, preserve my voice, structure, and formatting, then return the full corrected spec.\n\nContradictions to fix:\n",
-    ...contradictions.map(
-      (c, i) =>
-        `${i + 1}. [${c.severity.toUpperCase()}] ${c.summary}\n   Section A: "${c.sectionA}"\n   Section B: "${c.sectionB}"\n   Suggested rewrite: ${c.suggestedRewrite}`
-    ),
+    `I ran my product spec through AlmostRight and found ${issues.length} issues. Please address each one with a specific fix, preserve my voice, structure, and formatting, then return the full corrected spec.\n\nIssues to fix:\n`,
+    ...issues.map((issue, i) => {
+      const lines = [
+        `${i + 1}. [${issue.type.replace(/_/g, " ").toUpperCase()} — ${issue.severity.toUpperCase()}] ${issue.summary}`,
+        `   Quote: "${issue.excerpt}"`,
+      ]
+      if (issue.type === "contradiction" && issue.conflictingExcerpt) {
+        lines.push(`   Conflicting: "${issue.conflictingExcerpt}"`)
+      }
+      lines.push(`   Fix: ${issue.suggestedFix}`)
+      return lines.join("\n")
+    }),
     specSection,
   ].join("\n")
 
@@ -225,9 +331,7 @@ function CTAPanel({ contradictions, spec }: { contradictions: Contradiction[]; s
     <div className="mt-8 rounded-md border border-border bg-card p-6 space-y-4">
       <div>
         <p className="text-sm font-medium text-foreground mb-1">What&apos;s next?</p>
-        <p className="text-sm text-muted-foreground">
-          Fix these contradictions now, or prevent them from being written in the first place.
-        </p>
+        <p className="text-sm text-muted-foreground">{getCTACopy(issues)}</p>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">
@@ -267,11 +371,6 @@ function CTAPanel({ contradictions, spec }: { contradictions: Contradiction[]; s
           )}
         </button>
       </div>
-
-      <p className="text-xs text-muted-foreground">
-        Atono grounds your team&apos;s AI workflow in your product context — so contradictions like these are caught
-        before the spec is written.
-      </p>
     </div>
   )
 }
