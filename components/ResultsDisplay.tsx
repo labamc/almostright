@@ -2,7 +2,6 @@
 
 import {
   Clock,
-  ExternalLink,
   XCircle,
   HelpCircle,
   Flame,
@@ -145,11 +144,10 @@ function IssueCard({ issue }: { issue: SpecIssue }) {
         </blockquote>
       )}
 
-      <div className="pl-5 space-y-0.5 pt-1 border-t border-current/10">
-        <p className="text-xs font-medium opacity-50 uppercase tracking-widest">
-          {issue.type === "missing_edge_case" ? "What to add" : "Suggested fix"}
+      <div className="pl-5 pt-1 border-t border-current/10">
+        <p className="text-xs text-muted-foreground italic">
+          Fix included in your report — enter your email below to get it.
         </p>
-        <p className="text-sm leading-relaxed opacity-90">{issue.suggestedFix}</p>
       </div>
     </div>
   )
@@ -213,19 +211,6 @@ export function ResultsDisplay({ result }: ResultsDisplayProps) {
         </div>
       )}
 
-      {allIssues.length > 0 && (
-        <div className="pt-4 border-t border-border">
-          <a
-            href="https://atono.io/product-glossary"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Prevent this at the source with Atono
-            <ExternalLink className="h-3.5 w-3.5" />
-          </a>
-        </div>
-      )}
     </div>
   )
 }
