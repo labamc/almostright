@@ -70,7 +70,11 @@ function buildEmailHtml(result: AnalysisResult): string {
     <div style="padding:32px 32px 24px;">
       <h1 style="margin:0 0 6px;font-size:22px;font-weight:600;color:#1a1a1a;">Your AlmostRight report</h1>
       <p style="margin:0 0 4px;font-size:14px;color:#666;">Coherence score: <strong>${result.coherenceScore}/100</strong></p>
-      <p style="margin:0;font-size:14px;color:#666;">${total} issue${total !== 1 ? "s" : ""} across ${typeCount} type${typeCount !== 1 ? "s" : ""} — caught before your sprint</p>
+      <p style="margin:0 0 16px;font-size:14px;color:#666;">${total} issue${total !== 1 ? "s" : ""} across ${typeCount} type${typeCount !== 1 ? "s" : ""} — caught before your sprint</p>
+      <div style="padding:12px 16px;background:#f5f5f5;border-radius:6px;border-left:3px solid #1a1a1a;">
+        <p style="margin:0 0 4px;font-size:13px;font-weight:600;color:#1a1a1a;">Your fix file is attached</p>
+        <p style="margin:0;font-size:13px;color:#555;">Open the .md attachment and drop it into Claude. The prompt and all issues are baked in — Claude will rewrite your spec.</p>
+      </div>
     </div>
 
     <div style="height:1px;background:#e5e5e5;margin:0 32px;"></div>
@@ -82,6 +86,8 @@ function buildEmailHtml(result: AnalysisResult): string {
     <div style="height:1px;background:#e5e5e5;margin:0 32px;"></div>
 
     <div style="padding:24px 32px 32px;">
+      <p style="margin:0 0 6px;font-size:14px;color:#555;">Want to prevent issues like these before the spec is written?</p>
+      <p style="margin:0 0 16px;font-size:14px;color:#555;"><a href="https://atono.io/product-glossary" style="color:#1a1a1a;font-weight:500;">See how Atono grounds your team's AI in shared product context →</a></p>
       <p style="margin:0 0 12px;font-size:14px;color:#555;">Built by Adam Cheney — if this caught something real in your spec, I'd love to hear about it.</p>
       <a href="https://calendly.com/adam-cheney-atono/book-a-time-with-adam"
          style="display:inline-block;padding:10px 20px;background:#1a1a1a;color:#fff;text-decoration:none;border-radius:6px;font-size:14px;font-weight:500;">
@@ -93,14 +99,69 @@ function buildEmailHtml(result: AnalysisResult): string {
 </html>`
 }
 
+function buildFixMarkdown(result: AnalysisResult, spec: string): string {
+  const date = new Date().toISOString().split("T")[0]
+  const total = result.issues.length
+  const typeCount = new Set(result.issues.map((i) => i.type)).size
+
+  const grouped = ISSUE_TYPE_ORDER.flatMap((type) => {
+    const issues = result.issues.filter((i) => i.type === type)
+    return issues.length > 0 ? [{ type, issues }] : []
+  })
+
+  const issuesSections = grouped.map(({ type, issues }) => {
+    const config = TYPE_LABELS[type]
+    const issueLines = issues.map((issue, i) => {
+      const lines = [
+        `### ${i + 1}. [${issue.severity.toUpperCase()}] ${issue.summary}`,
+        ``,
+        issue.type === "contradiction" && issue.conflictingExcerpt
+          ? `**Section A:** > ${issue.excerpt}\n\n**Section B:** > ${issue.conflictingExcerpt}`
+          : `> ${issue.excerpt}`,
+        ``,
+        `**${issue.type === "missing_edge_case" ? "What to add" : "Suggested fix"}:** ${issue.suggestedFix}`,
+      ]
+      return lines.join("\n")
+    })
+    return [`## ${config.label}`, `*${config.description}*`, ``, ...issueLines].join("\n\n")
+  })
+
+  return [
+    `# AlmostRight Fix File — ${date}`,
+    ``,
+    `> **How to use this file:** Drop it into Claude. The prompt below and all ${total} issues are ready to go. Claude will rewrite your spec with each issue fixed.`,
+    ``,
+    `---`,
+    ``,
+    `## Prompt for Claude`,
+    ``,
+    `I ran my product spec through AlmostRight and found **${total} issue${total !== 1 ? "s" : ""} across ${typeCount} type${typeCount !== 1 ? "s" : ""}** (coherence score: ${result.coherenceScore}/100).`,
+    ``,
+    `Please fix each issue below. Preserve my voice, structure, and formatting. Return the full corrected spec at the end.`,
+    ``,
+    `---`,
+    ``,
+    `## Issues Found`,
+    ``,
+    issuesSections.join("\n\n---\n\n"),
+    ``,
+    `---`,
+    ``,
+    `## My Original Spec`,
+    ``,
+    spec || `*(spec not provided)*`,
+  ].join("\n")
+}
+
 export async function POST(req: Request) {
-  const { email, result } = await req.json() as { email: string; result: AnalysisResult }
+  const { email, result, spec } = await req.json() as { email: string; result: AnalysisResult; spec: string }
 
   if (!email || !email.includes("@")) {
     return Response.json({ error: "Valid email required." }, { status: 400 })
   }
 
   const total = result.issues.length
+  const fixMarkdown = buildFixMarkdown(result, spec ?? "")
 
   try {
     const resend = new Resend(process.env.RESEND_API_KEY)
@@ -110,6 +171,12 @@ export async function POST(req: Request) {
       replyTo: "adam.cheney@atono.io",
       subject: `Your AlmostRight report — ${total} issue${total !== 1 ? "s" : ""} found`,
       html: buildEmailHtml(result),
+      attachments: [
+        {
+          filename: `almostright-fix-${new Date().toISOString().split("T")[0]}.md`,
+          content: Buffer.from(fixMarkdown).toString("base64"),
+        },
+      ],
     })
 
     return Response.json({ ok: true })

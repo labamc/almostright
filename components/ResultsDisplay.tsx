@@ -1,19 +1,14 @@
 "use client"
 
-import { useState } from "react"
 import {
   Clock,
   ExternalLink,
-  Download,
-  Check,
   XCircle,
   HelpCircle,
   Flame,
   AlertTriangle,
   EyeOff,
   Ban,
-  Mail,
-  Loader2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { AnalysisResult, SpecIssue, IssueType, Severity } from "@/lib/types"
@@ -181,66 +176,6 @@ function TypeSection({ type, issues }: { type: IssueType; issues: SpecIssue[] })
   )
 }
 
-function exportMarkdown(result: AnalysisResult, issues: SpecIssue[]) {
-  const date = new Date().toISOString().split("T")[0]
-
-  const sections = ISSUE_TYPE_ORDER.flatMap((type) => {
-    const group = issues.filter((i) => i.type === type)
-    if (group.length === 0) return []
-    const config = typeConfig[type]
-    return [
-      `## ${config.label}`,
-      `*${config.description}*`,
-      ``,
-      ...group.map((issue, i) =>
-        [
-          `### ${i + 1}. [${issue.severity.toUpperCase()}] ${issue.summary}`,
-          ``,
-          issue.type === "contradiction"
-            ? `**Section A:** > ${issue.excerpt}\n\n**Section B:** > ${issue.conflictingExcerpt}`
-            : `> ${issue.excerpt}`,
-          ``,
-          `**${issue.type === "missing_edge_case" ? "What to add" : "Suggested fix"}:** ${issue.suggestedFix}`,
-        ].join("\n")
-      ),
-    ]
-  })
-
-  const content = [
-    `# AlmostRight Analysis — ${date}`,
-    ``,
-    `**Coherence score:** ${result.coherenceScore}/100`,
-    `**Issues found:** ${issues.length} across ${new Set(issues.map((i) => i.type)).size} types`,
-    ``,
-    `---`,
-    ``,
-    sections.join("\n\n"),
-  ].join("\n")
-
-  const blob = new Blob([content], { type: "text/markdown" })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement("a")
-  a.href = url
-  a.download = `almostright-${date}.md`
-  a.click()
-  URL.revokeObjectURL(url)
-}
-
-function getCTACopy(issues: SpecIssue[]): string {
-  const types = new Set(issues.map((i) => i.type))
-  if (types.has("ambiguity") && types.has("untestable"))
-    return "Atono generates acceptance criteria and grounds specs in shared context — so requirements are clear and testable before engineering starts."
-  if (types.has("scope_landmine"))
-    return "Atono surfaces scope implications before you write the spec — so hidden complexity gets planned, not discovered mid-sprint."
-  if (types.has("ambiguity"))
-    return "Atono's AI context and glossary prevent ambiguities by grounding specs in your team's shared decisions."
-  if (types.has("untestable"))
-    return "Atono generates acceptance criteria automatically from your stories — so requirements are testable by design."
-  if (types.has("unstated_assumption"))
-    return "Atono captures your team's product context so assumptions get documented as requirements, not discovered as incidents."
-  return "Atono grounds your team's AI workflow in your product context — so issues like these are caught before the spec is written."
-}
-
 export function ResultsDisplay({ result }: ResultsDisplayProps) {
   const grouped = ISSUE_TYPE_ORDER.map((type) => ({
     type,
@@ -255,25 +190,13 @@ export function ResultsDisplay({ result }: ResultsDisplayProps) {
   const allIssues = grouped.flatMap(({ issues }) => issues)
 
   return (
-    <div className="mt-10 space-y-6">
+    <div className="mt-10 pb-24 space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold tracking-tight">Analysis results</h2>
-        <div className="flex items-center gap-4">
-          {allIssues.length > 0 && (
-            <button
-              type="button"
-              onClick={() => exportMarkdown(result, allIssues)}
-              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <Download className="h-3.5 w-3.5" />
-              Export
-            </button>
-          )}
-          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Clock className="h-3.5 w-3.5" />
-            {(result.analysisMs / 1000).toFixed(1)}s
-          </span>
-        </div>
+        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Clock className="h-3.5 w-3.5" />
+          {(result.analysisMs / 1000).toFixed(1)}s
+        </span>
       </div>
 
       <CoherenceScore score={result.coherenceScore} />
@@ -290,116 +213,19 @@ export function ResultsDisplay({ result }: ResultsDisplayProps) {
         </div>
       )}
 
-      {allIssues.length > 0 && <CTAPanel issues={allIssues} result={result} />}
-    </div>
-  )
-}
-
-function CTAPanel({ issues, result }: { issues: SpecIssue[]; result: AnalysisResult }) {
-  const [email, setEmail] = useState("")
-  const [sending, setSending] = useState(false)
-  const [sent, setSent] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  async function handleSendReport(e: React.FormEvent) {
-    e.preventDefault()
-    if (!email.trim()) return
-    setSending(true)
-    setError(null)
-    try {
-      const res = await fetch("/api/email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, result }),
-      })
-      if (!res.ok) {
-        const { error: msg } = await res.json()
-        setError(msg ?? "Something went wrong. Please try again.")
-        return
-      }
-      setSent(true)
-    } catch {
-      setError("Network error. Please try again.")
-    } finally {
-      setSending(false)
-    }
-  }
-
-  return (
-    <div className="mt-8 rounded-md border border-border bg-card p-6 space-y-5">
-      <div>
-        <p className="text-sm font-medium text-foreground mb-1">What&apos;s next?</p>
-        <p className="text-sm text-muted-foreground">{getCTACopy(issues)}</p>
-      </div>
-
-      <div className="space-y-3">
-        {sent ? (
-          <div className="flex items-center gap-2 text-sm text-green-600 font-medium">
-            <Check className="h-4 w-4" />
-            Report sent — check your inbox
-          </div>
-        ) : (
-          <form onSubmit={handleSendReport} className="flex flex-col sm:flex-row gap-2">
-            <div className="relative flex-1">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="your@email.com"
-                required
-                disabled={sending}
-                className={cn(
-                  "w-full pl-9 pr-4 py-2.5 rounded-md border border-input bg-background",
-                  "text-sm text-foreground placeholder:text-muted-foreground",
-                  "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
-                  "disabled:opacity-50 disabled:cursor-not-allowed"
-                )}
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={sending || !email.trim()}
-              className={cn(
-                "inline-flex items-center justify-center gap-2 rounded-md px-5 py-2.5",
-                "bg-primary text-primary-foreground text-sm font-medium",
-                "hover:opacity-90 active:opacity-80 transition-opacity",
-                "disabled:opacity-40 disabled:cursor-not-allowed"
-              )}
-            >
-              {sending ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Sending…
-                </>
-              ) : (
-                "Send me this report"
-              )}
-            </button>
-          </form>
-        )}
-
-        {error && <p className="text-xs text-red-600">{error}</p>}
-
-        <p className="text-xs text-muted-foreground">
-          We&apos;ll email your full report. No spam — just this.
-        </p>
-      </div>
-
-      <div className="pt-2 border-t border-border">
-        <a
-          href="https://atono.io/product-glossary"
-          target="_blank"
-          rel="noopener noreferrer"
-          className={cn(
-            "inline-flex items-center gap-1.5 text-sm text-muted-foreground",
-            "hover:text-foreground transition-colors"
-          )}
-        >
-          Fix the root cause in Atono
-          <ExternalLink className="h-3.5 w-3.5" />
-        </a>
-      </div>
+      {allIssues.length > 0 && (
+        <div className="pt-4 border-t border-border">
+          <a
+            href="https://atono.io/product-glossary"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Prevent this at the source with Atono
+            <ExternalLink className="h-3.5 w-3.5" />
+          </a>
+        </div>
+      )}
     </div>
   )
 }

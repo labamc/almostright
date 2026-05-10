@@ -4,11 +4,13 @@ import { useState } from "react"
 import Link from "next/link"
 import { SpecForm } from "@/components/SpecForm"
 import { ResultsDisplay } from "@/components/ResultsDisplay"
+import { StickyEmailBar } from "@/components/StickyEmailBar"
 import { ThemeToggle } from "@/components/ThemeToggle"
 import type { AnalysisResult } from "@/lib/types"
 
 export default function Home() {
   const [result, setResult] = useState<AnalysisResult | null>(null)
+  const [spec, setSpec] = useState<string>("")
   const [error, setError] = useState<string | null>(null)
 
   return (
@@ -31,7 +33,7 @@ export default function Home() {
         </header>
 
         <SpecForm
-          onResult={(r) => { setResult(r); setError(null) }}
+          onResult={(r, s) => { setResult(r); setSpec(s); setError(null) }}
           onError={(e) => { setError(e); setResult(null) }}
         />
 
@@ -52,6 +54,8 @@ export default function Home() {
           </Link>
         </footer>
       </div>
+
+      {result && <StickyEmailBar result={result} spec={spec} />}
     </main>
   )
 }
