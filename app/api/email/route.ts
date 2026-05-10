@@ -161,7 +161,14 @@ export async function POST(req: Request) {
   }
 
   const total = result.issues.length
+  const highCount = result.issues.filter((i) => i.severity === "high").length
   const fixMarkdown = buildFixMarkdown(result, spec ?? "")
+
+  const subject = highCount > 0
+    ? `Your spec is high risk — ${highCount} sprint blocker${highCount !== 1 ? "s" : ""} found`
+    : total > 0
+    ? `Your AlmostRight report — ${total} issue${total !== 1 ? "s" : ""} found`
+    : "Your AlmostRight report — spec looks solid"
 
   try {
     const resend = new Resend(process.env.RESEND_API_KEY)
@@ -169,7 +176,7 @@ export async function POST(req: Request) {
       from: "AlmostRight <onboarding@resend.dev>",
       to: email,
       replyTo: "adam.cheney@atono.io",
-      subject: `Your AlmostRight report — ${total} issue${total !== 1 ? "s" : ""} found`,
+      subject,
       html: buildEmailHtml(result),
       attachments: [
         {
