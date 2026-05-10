@@ -22,11 +22,11 @@ export default function Home() {
             <ThemeToggle />
           </div>
           <h1 className="text-3xl font-semibold tracking-tight text-foreground mb-3">
-            Spec Contradiction Analyzer
+            Find what&apos;s wrong with your spec before engineering does
           </h1>
           <p className="text-muted-foreground text-base leading-relaxed">
-            Paste your product spec below. We'll surface contradictions, conflicting sections,
-            and suggested rewrites — before they make it into a build.
+            Paste your product spec and we&apos;ll surface contradictions, ambiguities, scope landmines,
+            missing edge cases, and untestable requirements — before they hit a sprint.
           </p>
         </header>
 
