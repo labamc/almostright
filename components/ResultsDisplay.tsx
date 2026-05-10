@@ -79,35 +79,136 @@ const severityDot: Record<Severity, string> = {
   low: "bg-slate-400",
 }
 
-function CoherenceScore({ score }: { score: number }) {
-  const label = score >= 80 ? "Strong" : score >= 60 ? "Moderate" : "Weak"
-  const color = score >= 80 ? "text-green-600" : score >= 60 ? "text-amber-600" : "text-red-600"
+function getSprintRisk(issues: SpecIssue[]): {
+  level: "high" | "moderate" | "low" | "none"
+  label: string
+  consequence: string
+  dot: string
+  border: string
+  bg: string
+} {
+  const high = issues.filter((i) => i.severity === "high").length
+  const medium = issues.filter((i) => i.severity === "medium").length
+
+  if (high > 0) return {
+    level: "high",
+    label: "High sprint risk",
+    consequence: `${high} blocker${high !== 1 ? "s" : ""} will stop engineering mid-track`,
+    dot: "bg-red-500",
+    border: "border-red-200 dark:border-red-900/50",
+    bg: "bg-red-50/50 dark:bg-red-950/20",
+  }
+  if (medium > 0) return {
+    level: "moderate",
+    label: "Moderate sprint risk",
+    consequence: "Clarification conversations expected before or during engineering",
+    dot: "bg-amber-500",
+    border: "border-amber-200 dark:border-amber-900/50",
+    bg: "bg-amber-50/50 dark:bg-amber-950/20",
+  }
+  if (issues.length > 0) return {
+    level: "low",
+    label: "Low sprint risk",
+    consequence: "Minor issues — safe to proceed, worth addressing before final review",
+    dot: "bg-green-500",
+    border: "border-green-200 dark:border-green-900/50",
+    bg: "bg-green-50/50 dark:bg-green-950/20",
+  }
+  return {
+    level: "none",
+    label: "No issues found",
+    consequence: "Your spec looks solid — ready for engineering",
+    dot: "bg-green-500",
+    border: "border-green-200 dark:border-green-900/50",
+    bg: "bg-green-50/50 dark:bg-green-950/20",
+  }
+}
+
+function SprintRiskIndicator({ issues }: { issues: SpecIssue[] }) {
+  const risk = getSprintRisk(issues)
 
   return (
-    <div className="flex items-center justify-between p-5 rounded-md border border-border bg-card">
+    <div className={cn("flex items-start gap-4 p-5 rounded-md border", risk.border, risk.bg)}>
+      <span className={cn("mt-1 h-3 w-3 rounded-full shrink-0", risk.dot)} />
       <div>
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest mb-1">Coherence score</p>
-        <p className={cn("text-4xl font-semibold tabular-nums", color)}>
-          {score}
-          <span className="text-lg text-muted-foreground font-normal">/100</span>
-        </p>
+        <p className="text-base font-semibold text-foreground">{risk.label}</p>
+        <p className="text-sm text-muted-foreground mt-0.5">{risk.consequence}</p>
       </div>
-      <span className={cn("text-sm font-medium", color)}>{label}</span>
     </div>
   )
 }
 
-function IssuesSummary({ issues }: { issues: SpecIssue[] }) {
-  const total = issues.length
-  const typeCount = new Set(issues.map((i) => i.type)).size
-  if (total === 0) return null
+function PriorityTier({
+  label,
+  consequence,
+  issues,
+  dot,
+}: {
+  label: string
+  consequence: string
+  issues: SpecIssue[]
+  dot: string
+}) {
+  if (issues.length === 0) return null
+
+  const types = [...new Set(issues.map((i) => typeConfig[i.type].label))]
 
   return (
-    <div className="flex items-center justify-between px-4 py-3 rounded-md border border-border bg-card text-sm">
-      <span className="text-muted-foreground">
-        {total} issue{total !== 1 ? "s" : ""} across {typeCount} type{typeCount !== 1 ? "s" : ""}
+    <div className="flex items-start gap-3">
+      <span className={cn("mt-1.5 h-2 w-2 rounded-full shrink-0", dot)} />
+      <div className="flex-1 min-w-0">
+        <span className="text-sm font-medium text-foreground">{label} </span>
+        <span className="text-sm text-muted-foreground">— {consequence}</span>
+        <div className="flex flex-wrap gap-1.5 mt-1.5">
+          {types.map((type) => (
+            <span
+              key={type}
+              className="inline-block px-2 py-0.5 rounded text-xs bg-muted text-muted-foreground font-mono"
+            >
+              {type.toLowerCase()}
+            </span>
+          ))}
+        </div>
+      </div>
+      <span className="text-sm font-mono tabular-nums text-muted-foreground shrink-0">
+        {issues.length}
       </span>
-      <span className="font-medium text-foreground">caught before your sprint</span>
+    </div>
+  )
+}
+
+function PriorityTriage({ issues }: { issues: SpecIssue[] }) {
+  if (issues.length === 0) return null
+
+  const high = issues.filter((i) => i.severity === "high")
+  const medium = issues.filter((i) => i.severity === "medium")
+  const low = issues.filter((i) => i.severity === "low")
+
+  return (
+    <div className="rounded-md border border-border bg-card p-5 space-y-4">
+      <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest">
+        Priority breakdown
+      </p>
+      <div className="space-y-4">
+        <PriorityTier
+          label="Sprint blockers"
+          consequence="fix before kickoff"
+          issues={high}
+          dot="bg-red-500"
+        />
+        <PriorityTier
+          label="Worth addressing"
+          consequence="will cause clarification conversations"
+          issues={medium}
+          dot="bg-amber-500"
+        />
+        <PriorityTier
+          label="Nice to have"
+          consequence="low risk, tidy up when you can"
+          issues={low}
+          dot="bg-slate-400"
+        />
+      </div>
     </div>
   )
 }
@@ -146,7 +247,7 @@ function IssueCard({ issue }: { issue: SpecIssue }) {
 
       <div className="pl-5 pt-1 border-t border-current/10">
         <p className="text-xs text-muted-foreground italic">
-          Fix included in your report — enter your email below to get it.
+          Fix included in your report — enter your email below to get it
         </p>
       </div>
     </div>
@@ -197,20 +298,26 @@ export function ResultsDisplay({ result }: ResultsDisplayProps) {
         </span>
       </div>
 
-      <CoherenceScore score={result.coherenceScore} />
+      <SprintRiskIndicator issues={allIssues} />
 
-      <IssuesSummary issues={allIssues} />
+      <PriorityTriage issues={allIssues} />
 
       {grouped.length === 0 ? (
         <p className="text-sm text-muted-foreground py-4">No issues found. Your spec looks solid.</p>
       ) : (
         <div className="space-y-10">
-          {grouped.map(({ type, issues }) => (
-            <TypeSection key={type} type={type} issues={issues} />
-          ))}
+          <div>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest mb-4">
+              Full breakdown
+            </p>
+            <div className="space-y-10">
+              {grouped.map(({ type, issues }) => (
+                <TypeSection key={type} type={type} issues={issues} />
+              ))}
+            </div>
+          </div>
         </div>
       )}
-
     </div>
   )
 }
