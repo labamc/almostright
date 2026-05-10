@@ -4,7 +4,6 @@ import { useState } from "react"
 import {
   Clock,
   ExternalLink,
-  Wand2,
   Download,
   Check,
   XCircle,
@@ -13,13 +12,14 @@ import {
   AlertTriangle,
   EyeOff,
   Ban,
+  Mail,
+  Loader2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { AnalysisResult, SpecIssue, IssueType, Severity } from "@/lib/types"
 
 interface ResultsDisplayProps {
   result: AnalysisResult
-  spec: string
 }
 
 const ISSUE_TYPE_ORDER: IssueType[] = [
@@ -241,7 +241,7 @@ function getCTACopy(issues: SpecIssue[]): string {
   return "Atono grounds your team's AI workflow in your product context — so issues like these are caught before the spec is written."
 }
 
-export function ResultsDisplay({ result, spec }: ResultsDisplayProps) {
+export function ResultsDisplay({ result }: ResultsDisplayProps) {
   const grouped = ISSUE_TYPE_ORDER.map((type) => ({
     type,
     issues: result.issues
@@ -290,86 +290,115 @@ export function ResultsDisplay({ result, spec }: ResultsDisplayProps) {
         </div>
       )}
 
-      {allIssues.length > 0 && <CTAPanel issues={allIssues} spec={spec} />}
+      {allIssues.length > 0 && <CTAPanel issues={allIssues} result={result} />}
     </div>
   )
 }
 
-function CTAPanel({ issues, spec }: { issues: SpecIssue[]; spec: string }) {
-  const [copied, setCopied] = useState(false)
+function CTAPanel({ issues, result }: { issues: SpecIssue[]; result: AnalysisResult }) {
+  const [email, setEmail] = useState("")
+  const [sending, setSending] = useState(false)
+  const [sent, setSent] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const specSection = spec ? `\n\nORIGINAL SPEC:\n---\n${spec}\n---` : ""
-
-  const fixPrompt = [
-    `I ran my product spec through AlmostRight and found ${issues.length} issues. Please address each one with a specific fix, preserve my voice, structure, and formatting, then return the full corrected spec.\n\nIssues to fix:\n`,
-    ...issues.map((issue, i) => {
-      const lines = [
-        `${i + 1}. [${issue.type.replace(/_/g, " ").toUpperCase()} — ${issue.severity.toUpperCase()}] ${issue.summary}`,
-        `   Quote: "${issue.excerpt}"`,
-      ]
-      if (issue.type === "contradiction" && issue.conflictingExcerpt) {
-        lines.push(`   Conflicting: "${issue.conflictingExcerpt}"`)
-      }
-      lines.push(`   Fix: ${issue.suggestedFix}`)
-      return lines.join("\n")
-    }),
-    specSection,
-  ].join("\n")
-
-  async function handleFixWithClaude() {
+  async function handleSendReport(e: React.FormEvent) {
+    e.preventDefault()
+    if (!email.trim()) return
+    setSending(true)
+    setError(null)
     try {
-      await navigator.clipboard.writeText(fixPrompt)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2500)
+      const res = await fetch("/api/email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, result }),
+      })
+      if (!res.ok) {
+        const { error: msg } = await res.json()
+        setError(msg ?? "Something went wrong. Please try again.")
+        return
+      }
+      setSent(true)
     } catch {
-      // clipboard unavailable — still open Claude
+      setError("Network error. Please try again.")
+    } finally {
+      setSending(false)
     }
-    window.open("https://claude.ai/new", "_blank")
   }
 
   return (
-    <div className="mt-8 rounded-md border border-border bg-card p-6 space-y-4">
+    <div className="mt-8 rounded-md border border-border bg-card p-6 space-y-5">
       <div>
         <p className="text-sm font-medium text-foreground mb-1">What&apos;s next?</p>
         <p className="text-sm text-muted-foreground">{getCTACopy(issues)}</p>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="space-y-3">
+        {sent ? (
+          <div className="flex items-center gap-2 text-sm text-green-600 font-medium">
+            <Check className="h-4 w-4" />
+            Report sent — check your inbox
+          </div>
+        ) : (
+          <form onSubmit={handleSendReport} className="flex flex-col sm:flex-row gap-2">
+            <div className="relative flex-1">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="your@email.com"
+                required
+                disabled={sending}
+                className={cn(
+                  "w-full pl-9 pr-4 py-2.5 rounded-md border border-input bg-background",
+                  "text-sm text-foreground placeholder:text-muted-foreground",
+                  "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
+                  "disabled:opacity-50 disabled:cursor-not-allowed"
+                )}
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={sending || !email.trim()}
+              className={cn(
+                "inline-flex items-center justify-center gap-2 rounded-md px-5 py-2.5",
+                "bg-primary text-primary-foreground text-sm font-medium",
+                "hover:opacity-90 active:opacity-80 transition-opacity",
+                "disabled:opacity-40 disabled:cursor-not-allowed"
+              )}
+            >
+              {sending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Sending…
+                </>
+              ) : (
+                "Send me this report"
+              )}
+            </button>
+          </form>
+        )}
+
+        {error && <p className="text-xs text-red-600">{error}</p>}
+
+        <p className="text-xs text-muted-foreground">
+          We&apos;ll email your full report. No spam — just this.
+        </p>
+      </div>
+
+      <div className="pt-2 border-t border-border">
         <a
-          href="https://atono.io"
+          href="https://atono.io/product-glossary"
           target="_blank"
           rel="noopener noreferrer"
           className={cn(
-            "inline-flex items-center justify-center gap-2 rounded-md px-5 py-2.5",
-            "bg-primary text-primary-foreground text-sm font-medium",
-            "hover:opacity-90 active:opacity-80 transition-opacity"
+            "inline-flex items-center gap-1.5 text-sm text-muted-foreground",
+            "hover:text-foreground transition-colors"
           )}
         >
-          <ExternalLink className="h-4 w-4" />
-          Start building in Atono
+          Fix the root cause in Atono
+          <ExternalLink className="h-3.5 w-3.5" />
         </a>
-
-        <button
-          type="button"
-          onClick={handleFixWithClaude}
-          className={cn(
-            "inline-flex items-center justify-center gap-2 rounded-md px-5 py-2.5",
-            "border border-border bg-background text-foreground text-sm font-medium",
-            "hover:bg-muted active:opacity-80 transition-colors"
-          )}
-        >
-          {copied ? (
-            <>
-              <Check className="h-4 w-4 text-green-600" />
-              Copied — paste into Claude
-            </>
-          ) : (
-            <>
-              <Wand2 className="h-4 w-4" />
-              Fix with Claude
-            </>
-          )}
-        </button>
       </div>
     </div>
   )

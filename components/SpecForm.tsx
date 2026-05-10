@@ -21,7 +21,7 @@ The notification preferences page lets users disable specific notification types
 Success is when users feel informed without feeling overwhelmed.`
 
 interface SpecFormProps {
-  onResult: (result: AnalysisResult, spec: string) => void
+  onResult: (result: AnalysisResult) => void
   onError: (error: string) => void
 }
 
@@ -97,7 +97,7 @@ export function SpecForm({ onResult, onError }: SpecFormProps) {
       }
 
       const data: AnalysisResult = await res.json()
-      onResult(data, spec)
+      onResult(data)
     } catch {
       onError("Network error. Please check your connection and try again.")
     } finally {
