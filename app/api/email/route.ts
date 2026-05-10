@@ -1,8 +1,6 @@
 import { Resend } from "resend"
 import type { AnalysisResult, IssueType } from "@/lib/types"
 
-const resend = new Resend(process.env.RESEND_API_KEY)
-
 const TYPE_LABELS: Record<IssueType, { label: string; description: string }> = {
   contradiction: { label: "Contradictions", description: "these can't both be true" },
   scope_landmine: { label: "Scope landmines", description: "these are bigger than they look" },
@@ -105,6 +103,7 @@ export async function POST(req: Request) {
   const total = result.issues.length
 
   try {
+    const resend = new Resend(process.env.RESEND_API_KEY)
     await resend.emails.send({
       from: "AlmostRight <onboarding@resend.dev>",
       to: email,
