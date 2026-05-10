@@ -1,11 +1,21 @@
 "use client"
 
-import { useState, useRef, useCallback } from "react"
+import { useState, useRef, useCallback, useEffect } from "react"
 import { Loader2, UploadCloud } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { AnalysisResult } from "@/lib/types"
 
-const MAX_FILE_BYTES = 10 * 1024 * 1024 // 10 MB
+const MAX_FILE_BYTES = 10 * 1024 * 1024
+
+const PROGRESS_MESSAGES = [
+  "Scanning for contradictions…",
+  "Checking for scope landmines…",
+  "Looking for missing edge cases…",
+  "Flagging ambiguous requirements…",
+  "Surfacing unstated assumptions…",
+  "Checking for untestable requirements…",
+  "Almost done…",
+]
 const ACCEPTED = ".txt,.md,.pdf,.docx"
 
 const SAMPLE_SPEC = `# Notification System
@@ -30,7 +40,19 @@ export function SpecForm({ onResult, onError }: SpecFormProps) {
   const [loading, setLoading] = useState(false)
   const [extracting, setExtracting] = useState(false)
   const [dragging, setDragging] = useState(false)
+  const [progressIdx, setProgressIdx] = useState(0)
   const fileRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!loading) {
+      setProgressIdx(0)
+      return
+    }
+    const id = setInterval(() => {
+      setProgressIdx((i) => (i + 1) % PROGRESS_MESSAGES.length)
+    }, 2000)
+    return () => clearInterval(id)
+  }, [loading])
 
   async function extractFile(file: File) {
     if (file.size > MAX_FILE_BYTES) {
@@ -174,11 +196,13 @@ export function SpecForm({ onResult, onError }: SpecFormProps) {
           />
         </div>
 
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground transition-opacity duration-300">
           {extracting ? (
             <span className="flex items-center gap-1">
               <Loader2 className="h-3 w-3 animate-spin" /> Extracting text…
             </span>
+          ) : loading ? (
+            PROGRESS_MESSAGES[progressIdx]
           ) : (
             `${spec.trim().split(/\s+/).filter(Boolean).length} words`
           )}
