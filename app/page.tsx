@@ -4,6 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { SpecForm } from "@/components/SpecForm"
 import { ResultsDisplay } from "@/components/ResultsDisplay"
+import { ThemeToggle } from "@/components/ThemeToggle"
 import type { AnalysisResult } from "@/lib/types"
 
 export default function Home() {
@@ -14,10 +15,11 @@ export default function Home() {
     <main className="min-h-screen bg-background">
       <div className="max-w-3xl mx-auto px-6 py-16">
         <header className="mb-12">
-          <div className="flex items-center gap-2 mb-6">
+          <div className="flex items-center justify-between mb-6">
             <span className="text-xs font-mono tracking-widest text-muted-foreground uppercase">
               AlmostRight
             </span>
+            <ThemeToggle />
           </div>
           <h1 className="text-3xl font-semibold tracking-tight text-foreground mb-3">
             Spec Contradiction Analyzer
