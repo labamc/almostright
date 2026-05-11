@@ -48,21 +48,13 @@ export default function Home() {
 
         {result && <ResultsDisplay result={result} />}
 
-        <footer className="mt-16 pt-8 border-t border-border flex items-center justify-between">
+        <footer className="mt-16 pt-8 border-t border-border">
           <Link
             href="/stats"
             className="text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
             Usage stats →
           </Link>
-          <a
-            href="https://calendly.com/adam-cheney-atono/book-a-time-with-adam"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Built by Adam Cheney →
-          </a>
         </footer>
       </div>
 
