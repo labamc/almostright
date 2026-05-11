@@ -96,8 +96,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Spec is too short to analyze." }, { status: 400 })
     }
 
-    if (spec.length > 50_000) {
-      return NextResponse.json({ error: "Spec exceeds the 50,000 character limit." }, { status: 400 })
+    if (spec.length > 100_000) {
+      return NextResponse.json({ error: "Spec exceeds the 100,000 character limit." }, { status: 400 })
     }
 
     const start = Date.now()
