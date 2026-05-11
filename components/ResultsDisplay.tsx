@@ -73,6 +73,90 @@ const typeConfig: Record<
   },
 }
 
+const CALENDLY_URL = "https://calendly.com/adam-cheney-atono/book-a-time-with-adam"
+
+const PREVENTION_MAP: Record<IssueType, { root: string; prevention: string }> = {
+  ambiguity: {
+    root: "These terms mean different things to different people on your team.",
+    prevention: "A shared product glossary would have defined them before the spec was written.",
+  },
+  unstated_assumption: {
+    root: "Your engineer will fill these gaps with their own interpretation.",
+    prevention: "Shared product context would have made these assumptions explicit decisions.",
+  },
+  contradiction: {
+    root: "A prior decision wasn't visible when this spec was written.",
+    prevention: "Persistent design decisions on your stories would have flagged the conflict — not buried in a Slack thread.",
+  },
+  scope_landmine: {
+    root: "The complexity wasn't visible from the spec alone.",
+    prevention: "Your team's delivery history and prior story context would have surfaced it before the sprint started.",
+  },
+  missing_edge_case: {
+    root: "Your product's user states weren't part of the writing context.",
+    prevention: "Documented personas and product knowledge would have caught these gaps during writing.",
+  },
+  untestable: {
+    root: "There's no shared definition of done for a requirement like this.",
+    prevention: "Feature engagement data tied to stories turns 'success' into a number, not a feeling.",
+  },
+}
+
+const RELEASE_PREVENTION = {
+  root: "This spec assumes deploy equals release — no rollout strategy is defined.",
+  prevention: "Feature flags tied directly to stories make deploy/release separation a deliberate spec decision, not a shipping-day scramble.",
+}
+
+function AtonoPreventionPanel({ issues }: { issues: SpecIssue[] }) {
+  if (issues.length === 0) return null
+
+  const foundTypes = [...new Set(issues.map((i) => i.type))]
+  const items = foundTypes.map((type) => PREVENTION_MAP[type])
+
+  const showReleaseItem = foundTypes.includes("scope_landmine") || foundTypes.includes("untestable")
+
+  return (
+    <div className="rounded-md border border-border bg-card p-5 space-y-4">
+      <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest">
+        Where these issues came from
+      </p>
+      <div className="space-y-4">
+        {items.map((item, i) => (
+          <div key={i} className="flex items-start gap-3">
+            <span className="mt-1.5 h-2 w-2 rounded-full shrink-0 bg-slate-400" />
+            <div className="space-y-0.5">
+              <p className="text-sm text-muted-foreground">{item.root}</p>
+              <p className="text-sm text-foreground">{item.prevention}</p>
+            </div>
+          </div>
+        ))}
+        {showReleaseItem && (
+          <div className="flex items-start gap-3">
+            <span className="mt-1.5 h-2 w-2 rounded-full shrink-0 bg-slate-400" />
+            <div className="space-y-0.5">
+              <p className="text-sm text-muted-foreground">{RELEASE_PREVENTION.root}</p>
+              <p className="text-sm text-foreground">{RELEASE_PREVENTION.prevention}</p>
+            </div>
+          </div>
+        )}
+      </div>
+      <div className="pt-2 border-t border-border space-y-3">
+        <p className="text-xs text-muted-foreground italic">
+          64% of product knowledge lives in people&apos;s heads. AlmostRight just showed you the cost.
+        </p>
+        <a
+          href={CALENDLY_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sm font-medium text-foreground hover:opacity-70 transition-opacity"
+        >
+          Book 15 min with Adam to see this prevented →
+        </a>
+      </div>
+    </div>
+  )
+}
+
 const severityDot: Record<Severity, string> = {
   high: "bg-red-500",
   medium: "bg-amber-500",
@@ -301,6 +385,8 @@ export function ResultsDisplay({ result }: ResultsDisplayProps) {
       <SprintRiskIndicator issues={allIssues} />
 
       <PriorityTriage issues={allIssues} />
+
+      <AtonoPreventionPanel issues={allIssues} />
 
       {grouped.length === 0 ? (
         <p className="text-sm text-muted-foreground py-4">No issues found. Your spec looks solid.</p>

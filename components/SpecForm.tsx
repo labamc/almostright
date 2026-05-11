@@ -8,17 +8,21 @@ import type { AnalysisResult } from "@/lib/types"
 const MAX_FILE_BYTES = 10 * 1024 * 1024 // 10 MB
 const ACCEPTED = ".txt,.md,.pdf,.docx"
 
-const SAMPLE_SPEC = `# Notification System
+const SAMPLE_SPEC = `# Role Management
 
-Users should receive real-time notifications for all activity on the platform. The notification bell in the top nav shows the unread count. Clicking it opens a dropdown with the last 10 notifications.
+Workspace owners need to assign, update, and revoke user roles without engineering involvement.
 
-Notifications must be delivered instantly and the system must also work seamlessly when the user is offline. The backend must support thousands of concurrent users with sub-100ms delivery at peak load.
+Roles available: Viewer, Contributor, Manager, and Admin. Admins have full access to all features including billing. Managers can create and assign work but cannot access billing or workspace settings.
 
-Users can mark notifications as read by clicking them. All notifications are automatically marked as read after 24 hours. Users can also manually mark all as read at once.
+Changes to roles take effect immediately across the platform. Users should not experience any disruption while actively working when their role changes.
 
-The notification preferences page lets users disable specific notification types. Notifications are always sent for critical system alerts regardless of user preferences.
+All role changes must be logged for compliance purposes. Logs must be retained for as long as legally required.
 
-Success is when users feel informed without feeling overwhelmed.`
+Workspace owners can bulk-update roles via CSV upload for large teams. The import should be simple and handle errors gracefully.
+
+New users added to the workspace default to the Contributor role unless specified. Users invited via SSO inherit their role from the identity provider.
+
+Success is when admins feel confident managing their team without needing to contact support.`
 
 interface SpecFormProps {
   onResult: (result: AnalysisResult, spec: string) => void

@@ -86,13 +86,22 @@ function buildEmailHtml(result: AnalysisResult): string {
     <div style="height:1px;background:#e5e5e5;margin:0 32px;"></div>
 
     <div style="padding:24px 32px 32px;">
-      <p style="margin:0 0 6px;font-size:14px;color:#555;">Want to prevent issues like these before the spec is written?</p>
-      <p style="margin:0 0 16px;font-size:14px;color:#555;"><a href="https://atono.io/product-glossary" style="color:#1a1a1a;font-weight:500;">See how Atono grounds your team's AI in shared product context →</a></p>
-      <p style="margin:0 0 12px;font-size:14px;color:#555;">Built by Adam Cheney — if this caught something real in your spec, I'd love to hear about it.</p>
+      <p style="margin:0 0 8px;font-size:14px;font-weight:600;color:#1a1a1a;">Where these issues came from</p>
+      <p style="margin:0 0 16px;font-size:14px;color:#555;line-height:1.6;">These issues exist because the spec was written without the product's memory — no shared definitions, no prior decisions, no documented user states. That's not a writing problem. It's a context problem.</p>
+      <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:0.05em;">Atono closes it across the full lifecycle</p>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
+        <tr><td style="padding:6px 0;font-size:13px;color:#1a1a1a;font-weight:500;width:180px;">Shared glossary</td><td style="padding:6px 0;font-size:13px;color:#555;">Ambiguous terms are defined before the spec is written</td></tr>
+        <tr><td style="padding:6px 0;font-size:13px;color:#1a1a1a;font-weight:500;">Persistent decisions</td><td style="padding:6px 0;font-size:13px;color:#555;">Prior choices are visible — not buried in Slack</td></tr>
+        <tr><td style="padding:6px 0;font-size:13px;color:#1a1a1a;font-weight:500;">Product knowledge</td><td style="padding:6px 0;font-size:13px;color:#555;">User states and edge cases are part of the writing context</td></tr>
+        <tr><td style="padding:6px 0;font-size:13px;color:#1a1a1a;font-weight:500;">Feature flags</td><td style="padding:6px 0;font-size:13px;color:#555;">Deploy/release separation is a spec decision, not a shipping-day scramble</td></tr>
+        <tr><td style="padding:6px 0;font-size:13px;color:#1a1a1a;font-weight:500;">Feature engagement</td><td style="padding:6px 0;font-size:13px;color:#555;">"Success" has a number, not a feeling</td></tr>
+      </table>
       <a href="https://calendly.com/adam-cheney-atono/book-a-time-with-adam"
-         style="display:inline-block;padding:10px 20px;background:#1a1a1a;color:#fff;text-decoration:none;border-radius:6px;font-size:14px;font-weight:500;">
-        → Book a time with Adam
+         style="display:inline-block;padding:10px 20px;background:#1a1a1a;color:#fff;text-decoration:none;border-radius:6px;font-size:14px;font-weight:500;margin-bottom:24px;">
+        Book 15 min with Adam →
       </a>
+      <div style="height:1px;background:#e5e5e5;margin:0 0 20px;"></div>
+      <p style="margin:0;font-size:13px;color:#888;">Built by Adam Cheney — if this caught something real in your spec, I'd love to hear about it.</p>
     </div>
   </div>
 </body>
