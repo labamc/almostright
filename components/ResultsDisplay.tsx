@@ -111,9 +111,18 @@ function AtonoPreventionPanel({ issues }: { issues: SpecIssue[] }) {
   if (issues.length === 0) return null
 
   const foundTypes = [...new Set(issues.map((i) => i.type))]
-  const items = foundTypes.map((type) => PREVENTION_MAP[type])
-
   const showReleaseItem = foundTypes.includes("scope_landmine") || foundTypes.includes("untestable")
+
+  const contextItems: { root: string; prevention: string }[] = foundTypes.flatMap((type) => {
+    const typeIssues = issues.filter((i) => i.type === type && i.contextGap)
+    if (typeIssues.length === 0) return [PREVENTION_MAP[type]]
+    return typeIssues.map((issue) => ({
+      root: issue.contextGap,
+      prevention: PREVENTION_MAP[type].prevention,
+    }))
+  })
+
+  const dedupedItems = contextItems.slice(0, 5)
 
   return (
     <div className="rounded-md border border-border bg-card p-5 space-y-4">
@@ -121,7 +130,7 @@ function AtonoPreventionPanel({ issues }: { issues: SpecIssue[] }) {
         Where these issues came from
       </p>
       <div className="space-y-4">
-        {items.map((item, i) => (
+        {dedupedItems.map((item, i) => (
           <div key={i} className="flex items-start gap-3">
             <span className="mt-1.5 h-2 w-2 rounded-full shrink-0 bg-slate-400" />
             <div className="space-y-0.5">
