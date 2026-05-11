@@ -1,6 +1,5 @@
 import { ImageResponse } from "next/og"
 
-export const runtime = "edge"
 export const alt = "AlmostRight — Find what's wrong with your spec before engineering does"
 export const size = { width: 1200, height: 630 }
 export const contentType = "image/png"
