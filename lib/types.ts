@@ -16,6 +16,7 @@ export interface SpecIssue {
   excerpt: string
   conflictingExcerpt?: string
   suggestedFix: string
+  contextGap: string
 }
 
 export interface AnalysisResult {

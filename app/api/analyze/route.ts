@@ -63,10 +63,11 @@ Respond ONLY with a valid JSON object matching this exact schema:
       "id": "<short unique string>",
       "type": "<contradiction|ambiguity|scope_landmine|missing_edge_case|unstated_assumption|untestable>",
       "severity": "<high|medium|low>",
-      "summary": "<one sentence describing the issue>",
+      "summary": "<one sentence that names the issue AND attributes it to missing team context — frame it as a knowledge gap, not a writing failure. Example: 'The term Admin is undefined — your team has a shared meaning for this that never made it into the spec'>",
       "excerpt": "<verbatim or near-verbatim quote from the spec showing the issue>",
       "conflictingExcerpt": "<ONLY for contradictions: the second quote that conflicts with excerpt — omit this field for all other types>",
-      "suggestedFix": "<a concrete, specific fix — rewritten text or exactly what needs to be added>"
+      "suggestedFix": "<a concrete, specific fix — rewritten text or exactly what needs to be added>",
+      "contextGap": "<one specific sentence explaining what team knowledge was missing when this spec was written — tied to this exact issue, not generic. Example: 'Your team's definition of Admin and its billing permissions exists in conversation but has never been written down where a spec could reference it'>"
     }
   ]
 }
