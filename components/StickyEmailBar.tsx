@@ -41,6 +41,11 @@ export function StickyEmailBar({ result, spec }: StickyEmailBarProps) {
   }
 
   const total = result.issues.length
+  const hasIssues = total > 0
+  const prefixText = hasIssues
+    ? `${total} issue${total !== 1 ? "s" : ""} found —`
+    : "Spec looks clean —"
+  const buttonText = hasIssues ? "Send me the fix" : "Send me the report"
 
   return (
     <div className={cn(
@@ -68,11 +73,11 @@ export function StickyEmailBar({ result, spec }: StickyEmailBarProps) {
           <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row sm:items-center gap-2">
             <div className="flex-1 min-w-0">
               <p className="text-xs text-muted-foreground mb-1.5 sm:hidden">
-                {total} issue{total !== 1 ? "s" : ""} found — get the Claude-ready fix file
+                {hasIssues ? `${total} issue${total !== 1 ? "s" : ""} found — get the Claude-ready fix file` : "Spec looks clean — get your analysis report"}
               </p>
               <div className="flex items-center gap-2">
                 <p className="text-sm font-medium text-foreground hidden sm:block shrink-0">
-                  {total} issue{total !== 1 ? "s" : ""} found —
+                  {prefixText}
                 </p>
                 <div className="relative flex-1">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
@@ -107,7 +112,7 @@ export function StickyEmailBar({ result, spec }: StickyEmailBarProps) {
               {sending ? (
                 <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Sending…</>
               ) : (
-                "Send me the fix"
+                buttonText
               )}
             </button>
           </form>

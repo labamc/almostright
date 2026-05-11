@@ -193,7 +193,7 @@ function getSprintRisk(issues: SpecIssue[]): {
   if (issues.length > 0) return {
     level: "low",
     label: "Low sprint risk",
-    consequence: "Minor issues — safe to proceed, worth addressing before final review",
+    consequence: `${issues.length} issue${issues.length !== 1 ? "s" : ""} caught before engineering — worth a quick pass before kickoff`,
     dot: "bg-green-500",
     border: "border-green-200 dark:border-green-900/50",
     bg: "bg-green-50/50 dark:bg-green-950/20",

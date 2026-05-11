@@ -5,6 +5,16 @@ import { ThemeProvider } from "@/components/ThemeProvider"
 export const metadata: Metadata = {
   title: "AlmostRight — Spec Quality Analyzer",
   description: "Paste your product spec and catch contradictions, ambiguities, scope landmines, and missing edge cases before they hit a sprint.",
+  openGraph: {
+    title: "AlmostRight — Find what's wrong with your spec before engineering does",
+    description: "Paste your spec. Get contradictions, ambiguities, scope landmines, and missing edge cases — before they hit a sprint.",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "AlmostRight — Find what's wrong with your spec before engineering does",
+    description: "Paste your spec. Get contradictions, ambiguities, scope landmines, and missing edge cases — before they hit a sprint.",
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

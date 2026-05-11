@@ -30,6 +30,9 @@ export default function Home() {
             Paste your product spec and we&apos;ll surface contradictions, ambiguities, scope landmines,
             missing edge cases, and untestable requirements — before they hit a sprint.
           </p>
+          <p className="text-sm text-muted-foreground italic mt-3">
+            Built by a PM who shipped features that broke mid-sprint. AlmostRight finds what the brief missed.
+          </p>
         </header>
 
         <SpecForm
@@ -45,13 +48,21 @@ export default function Home() {
 
         {result && <ResultsDisplay result={result} />}
 
-        <footer className="mt-16 pt-8 border-t border-border">
+        <footer className="mt-16 pt-8 border-t border-border flex items-center justify-between">
           <Link
             href="/stats"
             className="text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
             Usage stats →
           </Link>
+          <a
+            href="https://calendly.com/adam-cheney-atono/book-a-time-with-adam"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Built by Adam Cheney →
+          </a>
         </footer>
       </div>
 
