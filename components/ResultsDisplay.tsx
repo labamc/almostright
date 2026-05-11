@@ -150,7 +150,7 @@ function AtonoPreventionPanel({ issues }: { issues: SpecIssue[] }) {
           rel="noopener noreferrer"
           className="text-sm font-medium text-foreground hover:opacity-70 transition-opacity"
         >
-          Book 15 min with Adam to see this prevented →
+          See how Atono prevents this before the spec is written →
         </a>
       </div>
     </div>
