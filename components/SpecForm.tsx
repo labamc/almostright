@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 import type { AnalysisResult } from "@/lib/types"
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024
+const MAX_SPEC_CHARS = 100_000
 
 const PROGRESS_MESSAGES = [
   "Scanning for contradictions…",
@@ -43,9 +44,14 @@ export function SpecForm({ onResult, onError }: SpecFormProps) {
   const [spec, setSpec] = useState("")
   const [loading, setLoading] = useState(false)
   const [extracting, setExtracting] = useState(false)
+  const [extractingCount, setExtractingCount] = useState(0)
   const [dragging, setDragging] = useState(false)
   const [progressIdx, setProgressIdx] = useState(0)
+  const [fileWarnings, setFileWarnings] = useState<string[]>([])
   const fileRef = useRef<HTMLInputElement>(null)
+  const specRef = useRef(spec)
+
+  useEffect(() => { specRef.current = spec }, [spec])
 
   useEffect(() => {
     if (!loading) {
@@ -58,50 +64,77 @@ export function SpecForm({ onResult, onError }: SpecFormProps) {
     return () => clearInterval(id)
   }, [loading])
 
-  async function extractFile(file: File) {
-    if (file.size > MAX_FILE_BYTES) {
-      onError("File is too large. Maximum size is 10 MB.")
-      return
-    }
-
-    const ext = file.name.split(".").pop()?.toLowerCase()
-
-    if (ext === "txt" || ext === "md") {
-      const text = await file.text()
-      setSpec(text)
-      return
-    }
+  async function extractFiles(files: FileList | File[]) {
+    const fileArr = Array.from(files)
+    const warnings: string[] = []
+    const texts: string[] = []
 
     setExtracting(true)
-    try {
-      const form = new FormData()
-      form.append("file", file)
-      const res = await fetch("/api/extract", { method: "POST", body: form })
-      if (!res.ok) {
-        const { error } = await res.json()
-        onError(error ?? "Could not extract text from file.")
-        return
+    setExtractingCount(fileArr.length)
+    setFileWarnings([])
+
+    for (const file of fileArr) {
+      if (file.size > MAX_FILE_BYTES) {
+        warnings.push(`"${file.name}" is too large (max 10 MB) — skipped`)
+        continue
       }
-      const { text } = await res.json()
-      setSpec(text)
-    } catch {
-      onError("Failed to extract file. Please try pasting the text instead.")
-    } finally {
-      setExtracting(false)
+
+      const ext = file.name.split(".").pop()?.toLowerCase()
+
+      try {
+        let text: string
+        if (ext === "txt" || ext === "md") {
+          text = await file.text()
+        } else {
+          const form = new FormData()
+          form.append("file", file)
+          const res = await fetch("/api/extract", { method: "POST", body: form })
+          if (!res.ok) {
+            warnings.push(`"${file.name}" could not be extracted — skipped`)
+            continue
+          }
+          const data = await res.json()
+          text = data.text
+        }
+        texts.push(`--- ${file.name} ---\n\n${text.trim()}`)
+      } catch {
+        warnings.push(`"${file.name}" failed to extract — skipped`)
+      }
     }
+
+    setExtracting(false)
+    setExtractingCount(0)
+
+    if (texts.length === 0) {
+      setFileWarnings(warnings)
+      return
+    }
+
+    const combined = texts.join("\n\n")
+    const base = specRef.current.trim()
+    const next = base ? `${base}\n\n${combined}` : combined
+
+    if (next.length > MAX_SPEC_CHARS) {
+      warnings.push(`Combined spec exceeds 100,000 characters — try removing a file`)
+      setFileWarnings(warnings)
+      return
+    }
+
+    setSpec(next)
+    setFileWarnings(warnings)
   }
 
   const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) await extractFile(file)
+    const files = e.target.files
+    if (files && files.length > 0) await extractFiles(files)
     e.target.value = ""
   }, [])
 
   const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault()
     setDragging(false)
-    const file = e.dataTransfer.files?.[0]
-    if (file) await extractFile(file)
+    const files = e.dataTransfer.files
+    if (files && files.length > 0) await extractFiles(files)
   }, [])
 
   async function handleSubmit(e: React.FormEvent) {
@@ -109,6 +142,7 @@ export function SpecForm({ onResult, onError }: SpecFormProps) {
     if (!spec.trim()) return
 
     setLoading(true)
+    setFileWarnings([])
     try {
       const res = await fetch("/api/analyze", {
         method: "POST",
@@ -162,17 +196,26 @@ export function SpecForm({ onResult, onError }: SpecFormProps) {
               )}
             >
               <UploadCloud className="h-3.5 w-3.5" />
-              Upload file
+              Upload file(s)
             </button>
           </div>
           <input
             ref={fileRef}
             type="file"
             accept={ACCEPTED}
+            multiple
             onChange={handleFileChange}
             className="hidden"
           />
         </div>
+
+        {fileWarnings.length > 0 && (
+          <div className="rounded-md border border-amber-200 bg-amber-50/50 dark:border-amber-900/50 dark:bg-amber-950/30 px-3 py-2 space-y-1">
+            {fileWarnings.map((w, i) => (
+              <p key={i} className="text-xs text-amber-700 dark:text-amber-400">{w}</p>
+            ))}
+          </div>
+        )}
 
         <div
           onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
@@ -187,7 +230,7 @@ export function SpecForm({ onResult, onError }: SpecFormProps) {
             id="spec"
             value={spec}
             onChange={(e) => setSpec(e.target.value)}
-            placeholder="Paste your spec here, or drop a .txt .md .pdf .docx file…"
+            placeholder="Paste your spec here, or drop one or more .txt .md .pdf .docx files…"
             rows={12}
             disabled={busy}
             className={cn(
@@ -203,7 +246,8 @@ export function SpecForm({ onResult, onError }: SpecFormProps) {
         <p className="text-xs text-muted-foreground transition-opacity duration-300">
           {extracting ? (
             <span className="flex items-center gap-1">
-              <Loader2 className="h-3 w-3 animate-spin" /> Extracting text…
+              <Loader2 className="h-3 w-3 animate-spin" />
+              {extractingCount > 1 ? `Extracting ${extractingCount} files…` : "Extracting text…"}
             </span>
           ) : loading ? (
             PROGRESS_MESSAGES[progressIdx]
